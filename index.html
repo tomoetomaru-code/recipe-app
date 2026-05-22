@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🍳 マイレシピ帳</title>
+  <style>
+    :root {
+      --primary: #e8541a;
+      --primary-light: #ff8c42;
+      --primary-pale: #fff0e8;
+      --bg: #faf9f7;
+      --card: #ffffff;
+      --text: #2c2c2c;
+      --text-light: #888;
+      --border: #ebebea;
+      --success: #2d9f6e;
+      --danger: #d94040;
+      --shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 640px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    /* ─── HEADER ─── */
+    .header {
+      background: var(--primary);
+      color: #fff;
+      padding: 14px 16px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      box-shadow: 0 2px 8px rgba(232,84,26,0.25);
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .header h1 { font-size: 19px; font-weight: 700; letter-spacing: 0.02em; }
+    .header-count { font-size: 12px; opacity: 0.85; background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 20px; }
+    .search-wrap { position: relative; }
+    .search-wrap input {
+      width: 100%;
+      padding: 9px 14px 9px 38px;
+      border: none;
+      border-radius: 24px;
+      font-size: 15px;
+      outline: none;
+      background: rgba(255,255,255,0.92);
+      color: var(--text);
+    }
+    .search-wrap input::placeholder { color: #bbb; }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      pointer-events: none;
+    }
+
+    /* ─── BOTTOM NAV ─── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 640px;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 200;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 10px 4px 8px;
+      border: none;
+      background: none;
+      font-size: 10px;
+      color: var(--text-light);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      transition: color 0.15s;
+    }
+    .nav-btn .ico { font-size: 22px; line-height: 1; }
+    .nav-btn.active { color: var(--primary); font-weight: 600; }
+
+    /* ─── MAIN ─── */
+    .main { padding: 14px 14px 80px; }
+
+    /* ─── VIEWS ─── */
+    [data-view] { display: none; }
+    [data-view].active { display: block; }
+
+    /* ─── CATEGORY CHIPS ─── */
+    .cat-scroll {
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+    .cat-scroll::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0;
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* ─── RECIPE CARDS ─── */
+    .recipe-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 15px 16px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: box-shadow 0.15s, transform 0.1s;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .recipe-card:active { transform: scale(0.985); }
+    .card-body { flex: 1; min-width: 0; }
+    .card-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      background: var(--primary-pale);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .card-cat {
+      display: inline-block;
+      background: var(--primary-pale);
+      color: var(--primary);
+      font-size: 11px;
+      padding: 2px 9px;
+      border-radius: 20px;
+      margin-bottom: 5px;
+    }
+    .card-preview { font-size: 13px; color: var(--text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ─── DETAIL ─── */
+    .detail-back {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .back-btn {
+      background: var(--primary-pale);
+      border: none;
+      color: var(--primary);
+      font-size: 20px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .detail-title { font-size: 20px; font-weight: 700; }
+    .detail-cat { display: inline-block; background: var(--primary-pale); color: var(--primary); font-size: 12px; padding: 3px 12px; border-radius: 20px; margin: 6px 0 14px; }
+
+    .sec-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sec-title::after { content:''; flex:1; height:1px; background: linear-gradient(to right, var(--primary-light), transparent); }
+    .sec-body {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      line-height: 1.8;
+      white-space: pre-wrap;
+      font-size: 15px;
+      word-break: break-word;
+    }
+    .action-row { display: flex; gap: 10px; margin-top: 4px; }
+    .action-row .btn { flex: 1; }
+
+    /* ─── FORM ─── */
+    .form-section { margin-bottom: 18px; }
+    .form-label { font-size: 13px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+    .req { color: var(--primary); font-size: 12px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 15px;
+      font-family: inherit;
+      background: var(--card);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+    .form-textarea { min-height: 110px; resize: vertical; line-height: 1.7; }
+    .form-hint { font-size: 12px; color: var(--text-light); margin-top: 5px; }
+
+    /* ─── BUTTONS ─── */
+    .btn {
+      padding: 13px 18px;
+      border-radius: 12px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      font-family: inherit;
+      text-align: center;
+    }
+    .btn:active { opacity: 0.8; transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; }
+    .btn-secondary { background: #f0f0ee; color: var(--text); }
+    .btn-danger { background: #fff0f0; color: var(--danger); border: 1.5px solid #ffd0d0; }
+    .btn-outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); width: 100%; }
+
+    /* ─── EMPTY / LOADING ─── */
+    .empty {
+      text-align: center;
+      padding: 52px 24px;
+      color: var(--text-light);
+    }
+    .empty .big { font-size: 64px; margin-bottom: 16px; }
+    .empty p { font-size: 15px; line-height: 1.7; }
+    .loading { text-align: center; padding: 40px; color: var(--text-light); font-size: 14px; }
+    .spin { display: inline-block; animation: spin 1s linear infinite; font-size: 24px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── TOAST ─── */
+    .toast {
+      position: fixed;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-size: 14px;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 999;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ─── SETTINGS ─── */
+    .set-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .set-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+    .status-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+    .dot.ok { background: var(--success); }
+    .dot.ng { background: var(--danger); }
+
+    .step-list { list-style: none; }
+    .step-item { display: flex; gap: 12px; margin-bottom: 14px; }
+    .step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      font-size: 13px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .step-text { font-size: 14px; line-height: 1.65; padding-top: 3px; }
+    .step-text code {
+      background: #f3f3f3;
+      padding: 1px 6px;
+      border-radius: 5px;
+      font-size: 12px;
+      word-break: break-all;
+    }
+    .url-box {
+      background: #f7f7f5;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--primary);
+      word-break: break-all;
+      margin-top: 8px;
+    }
+
+    /* ─── PAGE TITLE ─── */
+    .page-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header" id="appHeader">
+  <div class="header-top">
+    <h1>🍳 マイレシピ帳</h1>
+    <span class="header-count" id="recipeCount">0 品</span>
+  </div>
+  <div class="search-wrap" id="searchWrap">
+    <span class="search-icon">🔍</span>
+    <input type="search" id="searchInput" placeholder="料理名・食材で検索..." oninput="onSearch()" autocomplete="off">
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ▼ LIST -->
+  <div data-view="list" id="viewList" class="active">
+    <div class="cat-scroll" id="catFilters"></div>
+    <div id="recipeList"></div>
+  </div>
+
+  <!-- ▼ DETAIL -->
+  <div data-view="detail" id="viewDetail">
+    <div class="detail-back">
+      <button class="back-btn" onclick="showView('list')" aria-label="戻る">←</button>
+      <div>
+        <div class="detail-title" id="dName"></div>
+      </div>
+    </div>
+    <span class="detail-cat" id="dCat"></span>
+    <div class="sec-title">🥦 材料</div>
+    <div class="sec-body" id="dIngredients"></div>
+    <div class="sec-title">👨‍🍳 作り方</div>
+    <div class="sec-body" id="dSteps"></div>
+    <div id="dMemoWrap">
+      <div class="sec-title">📝 メモ・コツ</div>
+      <div class="sec-body" id="dMemo"></div>
+    </div>
+    <div class="action-row" style="margin-top:8px;">
+      <button class="btn btn-secondary" onclick="editCurrent()">✏️ 編集</button>
+      <button class="btn btn-danger" onclick="deleteCurrent()">🗑️ 削除</button>
+    </div>
+  </div>
+
+  <!-- ▼ FORM (add / edit) -->
+  <div data-view="form" id="viewForm">
+    <div class="page-title" id="formTitle">レシピを追加</div>
+    <input type="hidden" id="fId">
+
+    <div class="form-section">
+      <label class="form-label">料理名 <span class="req">必須</span></label>
+      <input type="text" id="fName" class="form-input" placeholder="例：鶏の唐揚げ">
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">カテゴリ</label>
+      <select id="fCategory" class="form-select">
+        <option value="和食">🍱 和食</option>
+        <option value="洋食">🍝 洋食</option>
+        <option value="中華">🥢 中華</option>
+        <option value="韓国料理">🌶️ 韓国料理</option>
+        <option value="スープ・汁物">🍲 スープ・汁物</option>
+        <option value="サラダ">🥗 サラダ</option>
+        <option value="お菓子・デザート">🍰 お菓子・デザート</option>
+        <option value="その他">🍽️ その他</option>
+      </select>
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">材料 <span class="req">必須</span></label>
+      <textarea id="fIngredients" class="form-textarea"
+        placeholder="鶏もも肉 300g&#10;醤油 大さじ2&#10;みりん 大さじ1&#10;にんにく 1片"></textarea>
+      <div class="form-hint">1行に1つずつ書くと見やすくなります</div>
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">作り方 <span class="req">必須</span></label>
+      <textarea id="fSteps" class="form-textarea"
+        placeholder="① 鶏肉を一口大に切る&#10;② 醤油・みりん・にんにくで30分漬ける&#10;③ 170℃の油で5分揚げる"></textarea>
+    </div>
+
+    <div class="form-section">
+      <label class="form-label">メモ・コツ</label>
+      <textarea id="fMemo" class="form-textarea" style="min-height:75px;"
+        placeholder="二度揚げするとサクサクに！冷めても美味しい。"></textarea>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveRecipe()">💾 保存する</button>
+    <div style="height:10px;"></div>
+    <button class="btn btn-outline" onclick="cancelForm()">キャンセル</button>
+  </div>
+
+  <!-- ▼ SETTINGS -->
+  <div data-view="settings" id="viewSettings">
+    <div class="page-title">⚙️ 設定</div>
+
+    <div class="set-card">
+      <div class="set-title">接続状態</div>
+      <div class="status-row">
+        <div class="dot" id="connDot"></div>
+        <div id="connText" style="color:var(--text-light)">未設定</div>
+      </div>
+      <div class="url-box" id="connUrl" style="display:none;"></div>
+    </div>
+
+    <div class="set-card">
+      <div class="set-title">📊 スプレッドシートAPIのURL</div>
+      <div class="form-section">
+        <input type="url" id="apiInput" class="form-input" placeholder="https://script.google.com/macros/s/…">
+        <div class="form-hint">Google Apps Script のウェブアプリURLを貼り付けてください</div>
+      </div>
+      <button class="btn btn-primary" onclick="testAndSave()">🔗 接続テスト & 保存</button>
+    </div>
+
+    <div class="set-card">
+      <div class="set-title">📖 はじめてのセットアップ</div>
+      <ul class="step-list">
+        <li class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-text">Googleスプレッドシートを新規作成する（タイトルは何でもOK）</div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-text">メニューの「拡張機能」→「Apps Script」を開く</div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-text">GitHubにある <code>code.gs</code> の内容をコピーして、Apps Scriptのエディタに貼り付け保存する</div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">4</div>
+          <div class="step-text">「デプロイ」→「新しいデプロイ」をクリック。種類は「ウェブアプリ」を選択。アクセスできるユーザーを <code>全員</code> にして「デプロイ」</div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">5</div>
+          <div class="step-text">表示されたウェブアプリのURLをコピーして上の入力欄に貼り付け「接続テスト & 保存」をクリック</div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">6</div>
+          <div class="step-text">接続成功！あとはレシピを追加するだけ 🎉</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="navList" onclick="showView('list')">
+    <span class="ico">📋</span>レシピ一覧
+  </button>
+  <button class="nav-btn" id="navForm" onclick="showAddForm()">
+    <span class="ico">➕</span>レシピ追加
+  </button>
+  <button class="nav-btn" id="navSettings" onclick="showView('settings')">
+    <span class="ico">⚙️</span>設定
+  </button>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+//  State
+// ══════════════════════════════════════
+let recipes       = [];
+let currentRecipe = null;
+let searchQuery   = '';
+let selectedCat   = 'すべて';
+let apiUrl        = localStorage.getItem('recipeApiUrl') || '';
+
+const CATEGORY_ICONS = {
+  '和食': '🍱', '洋食': '🍝', '中華': '🥢', '韓国料理': '🌶️',
+  'スープ・汁物': '🍲', 'サラダ': '🥗', 'お菓子・デザート': '🍰', 'その他': '🍽️'
+};
+
+// ══════════════════════════════════════
+//  Boot
+// ══════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  refreshSettingsUI();
+  if (apiUrl) loadRecipes();
+  else renderList();
+});
+
+// ══════════════════════════════════════
+//  API
+// ══════════════════════════════════════
+async function api(params) {
+  if (!apiUrl) { showView('settings'); return null; }
+  const qs = new URLSearchParams(params).toString();
+  try {
+    const res = await fetch(apiUrl + '?' + qs);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch (e) {
+    toast('⚠️ 通信エラー：' + e.message);
+    return null;
+  }
+}
+
+async function loadRecipes() {
+  document.getElementById('recipeList').innerHTML =
+    '<div class="loading"><span class="spin">⏳</span><br>読み込み中…</div>';
+  const data = await api({ action: 'getAll' });
+  if (data?.recipes) {
+    recipes = data.recipes;
+    renderList();
+    renderCats();
+    document.getElementById('recipeCount').textContent = recipes.length + ' 品';
+  }
+}
+
+async function saveRecipe() {
+  const id          = document.getElementById('fId').value;
+  const name        = document.getElementById('fName').value.trim();
+  const category    = document.getElementById('fCategory').value;
+  const ingredients = document.getElementById('fIngredients').value.trim();
+  const steps       = document.getElementById('fSteps').value.trim();
+  const memo        = document.getElementById('fMemo').value.trim();
+
+  if (!name)        { toast('⚠️ 料理名を入力してください'); return; }
+  if (!ingredients) { toast('⚠️ 材料を入力してください'); return; }
+  if (!steps)       { toast('⚠️ 作り方を入力してください'); return; }
+
+  const recipe = { name, category, ingredients, steps, memo };
+  const action = id ? 'update' : 'add';
+  if (id) recipe.id = id;
+
+  const data = await api({ action, ...recipe });
+  if (data?.success) {
+    await loadRecipes();
+    toast(id ? '✅ レシピを更新しました' : '✅ レシピを追加しました');
+    showView('list');
+    currentRecipe = null;
+  }
+}
+
+async function deleteCurrent() {
+  if (!currentRecipe) return;
+  if (!confirm(`「${currentRecipe.name}」を削除しますか？`)) return;
+  const data = await api({ action: 'delete', id: currentRecipe.id });
+  if (data?.success) {
+    await loadRecipes();
+    toast('🗑️ 削除しました');
+    showView('list');
+    currentRecipe = null;
+  }
+}
+
+// ══════════════════════════════════════
+//  Render
+// ══════════════════════════════════════
+function renderList() {
+  const el = document.getElementById('recipeList');
+
+  if (!apiUrl) {
+    el.innerHTML = `<div class="empty">
+      <div class="big">⚙️</div>
+      <p>まず設定からスプレッドシートのURLを<br>入力してください</p>
+      <div style="height:16px;"></div>
+      <button class="btn btn-primary" style="width:auto;padding:12px 28px;" onclick="showView('settings')">設定を開く</button>
+    </div>`;
+    return;
+  }
+
+  const q = searchQuery.toLowerCase();
+  const filtered = recipes.filter(r => {
+    const matchQ = !q || r.name?.toLowerCase().includes(q) ||
+                   r.ingredients?.toLowerCase().includes(q) ||
+                   r.category?.toLowerCase().includes(q);
+    const matchC = selectedCat === 'すべて' || r.category === selectedCat;
+    return matchQ && matchC;
+  });
+
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="empty">
+      <div class="big">${q ? '🔍' : '📝'}</div>
+      <p>${q ? `「${esc(q)}」は見つかりませんでした` : 'レシピがまだありません。<br>「レシピ追加」から登録しましょう！'}</p>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(r => {
+    const icon = CATEGORY_ICONS[r.category] || '🍽️';
+    const preview = (r.ingredients || '').split('\n')[0];
+    return `<div class="recipe-card" data-id="${esc(r.id)}" onclick="openCard(this)">
+      <div class="card-icon">${icon}</div>
+      <div class="card-body">
+        <div class="card-name">${esc(r.name)}</div>
+        <span class="card-cat">${esc(r.category)}</span>
+        <div class="card-preview">${esc(preview)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openCard(el) {
+  const id = el.dataset.id;
+  const r = recipes.find(x => x.id === id);
+  if (r) showDetail(r);
+}
+
+function renderCats() {
+  const cats = ['すべて', ...new Set(recipes.map(r => r.category).filter(Boolean))];
+  document.getElementById('catFilters').innerHTML = cats.map(c =>
+    `<div class="chip${selectedCat===c?' active':''}" onclick="pickCat('${esc(c)}')">${c}</div>`
+  ).join('');
+}
+
+function pickCat(c) {
+  selectedCat = c;
+  renderCats();
+  renderList();
+}
+
+function onSearch() {
+  searchQuery = document.getElementById('searchInput').value;
+  renderList();
+}
+
+// ══════════════════════════════════════
+//  Detail
+// ══════════════════════════════════════
+function showDetail(r) {
+  currentRecipe = r;
+  document.getElementById('dName').textContent         = r.name;
+  document.getElementById('dCat').textContent          = r.category;
+  document.getElementById('dIngredients').textContent  = r.ingredients;
+  document.getElementById('dSteps').textContent        = r.steps;
+  const memoWrap = document.getElementById('dMemoWrap');
+  if (r.memo) {
+    document.getElementById('dMemo').textContent = r.memo;
+    memoWrap.style.display = 'block';
+  } else {
+    memoWrap.style.display = 'none';
+  }
+  showView('detail');
+}
+
+// ══════════════════════════════════════
+//  Form
+// ══════════════════════════════════════
+function showAddForm() {
+  currentRecipe = null;
+  document.getElementById('formTitle').textContent = 'レシピを追加';
+  ['fId','fName','fIngredients','fSteps','fMemo'].forEach(id =>
+    document.getElementById(id).value = '');
+  document.getElementById('fCategory').value = '和食';
+  showView('form');
+}
+
+function editCurrent() {
+  if (!currentRecipe) return;
+  document.getElementById('formTitle').textContent = 'レシピを編集';
+  document.getElementById('fId').value          = currentRecipe.id;
+  document.getElementById('fName').value        = currentRecipe.name;
+  document.getElementById('fCategory').value    = currentRecipe.category;
+  document.getElementById('fIngredients').value = currentRecipe.ingredients;
+  document.getElementById('fSteps').value       = currentRecipe.steps;
+  document.getElementById('fMemo').value        = currentRecipe.memo || '';
+  showView('form');
+}
+
+function cancelForm() {
+  currentRecipe ? showDetail(currentRecipe) : showView('list');
+}
+
+// ══════════════════════════════════════
+//  View switching
+// ══════════════════════════════════════
+function showView(name) {
+  document.querySelectorAll('[data-view]').forEach(v => v.classList.remove('active'));
+  document.getElementById('view' + cap(name)).classList.add('active');
+
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const navMap = { list: 'navList', form: 'navForm', settings: 'navSettings' };
+  if (navMap[name]) document.getElementById(navMap[name]).classList.add('active');
+
+  // search bar only on list
+  const sw = document.getElementById('searchWrap');
+  const hh = document.getElementById('appHeader');
+  sw.style.display = name === 'list' ? 'block' : 'none';
+  hh.style.paddingBottom = name === 'list' ? '12px' : '14px';
+
+  window.scrollTo(0, 0);
+}
+
+// ══════════════════════════════════════
+//  Settings
+// ══════════════════════════════════════
+function refreshSettingsUI() {
+  const dot  = document.getElementById('connDot');
+  const text = document.getElementById('connText');
+  const box  = document.getElementById('connUrl');
+  const inp  = document.getElementById('apiInput');
+  if (apiUrl) {
+    dot.className  = 'dot ok';
+    text.textContent = '接続済み';
+    text.style.color = 'var(--success)';
+    box.style.display = 'block';
+    box.textContent = apiUrl;
+    inp.value = apiUrl;
+  } else {
+    dot.className  = 'dot ng';
+    text.textContent = '未設定';
+    text.style.color = 'var(--text-light)';
+    box.style.display = 'none';
+  }
+}
+
+async function testAndSave() {
+  const url = document.getElementById('apiInput').value.trim();
+  if (!url) { toast('⚠️ URLを入力してください'); return; }
+  toast('🔗 接続テスト中…');
+  try {
+    const res  = await fetch(url + '?action=getAll');
+    const data = await res.json();
+    if (!Array.isArray(data?.recipes)) throw new Error('データ形式が不正です');
+    apiUrl = url;
+    localStorage.setItem('recipeApiUrl', url);
+    recipes = data.recipes;
+    renderList();
+    renderCats();
+    refreshSettingsUI();
+    document.getElementById('recipeCount').textContent = recipes.length + ' 品';
+    toast('✅ 接続成功！レシピを読み込みました');
+  } catch (e) {
+    toast('❌ 接続失敗：' + e.message);
+  }
+}
+
+// ══════════════════════════════════════
+//  Utils
+// ══════════════════════════════════════
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
